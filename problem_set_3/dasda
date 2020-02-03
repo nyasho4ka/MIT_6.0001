@@ -1,0 +1,11 @@
+Help on function is_valid_word in module __main__:
+
+iiss__vvaalliidd__wwoorrdd(word, hand, word_list)
+    Returns True if word is in the word_list and is entirely
+    composed of letters in the hand. Otherwise, returns False.
+    Does not mutate hand or word_list.
+    
+    word: string
+    hand: dictionary (string -> int)
+    word_list: list of lowercase strings
+    returns: boolean
