@@ -5,6 +5,9 @@
 
 import string
 
+ALPHABET_SYMBOLS_COUNT = 26
+
+
 ### HELPER CODE ###
 def load_words(file_name):
     '''
@@ -70,7 +73,8 @@ class Message(object):
             self.message_text (string, determined by input text)
             self.valid_words (list, determined using helper function load_words)
         '''
-        pass #delete this line and replace with your code here
+        self.message_text = text
+        self.valid_words = load_words('words.txt')
 
     def get_message_text(self):
         '''
@@ -78,7 +82,7 @@ class Message(object):
         
         Returns: self.message_text
         '''
-        pass #delete this line and replace with your code here
+        return self.message_text
 
     def get_valid_words(self):
         '''
@@ -87,7 +91,7 @@ class Message(object):
         
         Returns: a COPY of self.valid_words
         '''
-        pass #delete this line and replace with your code here
+        return self.valid_words[:]
 
     def build_shift_dict(self, shift):
         '''
@@ -103,7 +107,32 @@ class Message(object):
         Returns: a dictionary mapping a letter (string) to 
                  another letter (string). 
         '''
-        pass #delete this line and replace with your code here
+        letters_lower = string.ascii_lowercase
+        letters_upper = string.ascii_uppercase
+
+        shift_letters_lower = self.get_shifted_letters(letters_lower, shift)
+        shift_letters_upper = self.get_shifted_letters(letters_upper, shift)
+
+        shift_letter = self.concat_shifted_letters(shift_letters_lower, shift_letters_upper)
+        return shift_letter
+
+    def get_shifted_letters(self, letters, shift):
+        shifted_letters = {}
+
+        for letter_position in range(len(letters)):
+            shifted_position = self.get_shifted_position(letter_position, shift)
+            shifted_letters[letters[letter_position]] = letters[shifted_position]
+
+        return shifted_letters
+
+    @staticmethod
+    def get_shifted_position(letter_position, shift):
+        return (letter_position + shift) % ALPHABET_SYMBOLS_COUNT
+
+    @staticmethod
+    def concat_shifted_letters(first_letters, second_letters):
+        first_letters.update(second_letters)
+        return first_letters
 
     def apply_shift(self, shift):
         '''
@@ -117,7 +146,16 @@ class Message(object):
         Returns: the message text (string) in which every character is shifted
              down the alphabet by the input shift
         '''
-        pass #delete this line and replace with your code here
+        shifted_dict = self.build_shift_dict(shift)
+        encrypted_message = self.encrypt_message(shifted_dict)
+        return encrypted_message
+
+    def encrypt_message(self, shifted_dict):
+        message = ''
+        for char in self.message_text:
+            message += shifted_dict[char]
+        return message
+
 
 class PlaintextMessage(Message):
     def __init__(self, text, shift):
@@ -205,20 +243,9 @@ class CiphertextMessage(Message):
         '''
         pass #delete this line and replace with your code here
 
+
 if __name__ == '__main__':
-
-#    #Example test case (PlaintextMessage)
-#    plaintext = PlaintextMessage('hello', 2)
-#    print('Expected Output: jgnnq')
-#    print('Actual Output:', plaintext.get_message_text_encrypted())
-#
-#    #Example test case (CiphertextMessage)
-#    ciphertext = CiphertextMessage('jgnnq')
-#    print('Expected Output:', (24, 'hello'))
-#    print('Actual Output:', ciphertext.decrypt_message())
-
-    #TODO: WRITE YOUR TEST CASES HERE
-
-    #TODO: best shift value and unencrypted story 
-    
-    pass #delete this line and replace with your code here
+    message = Message("Hello, world!")
+    encrypted_message = message.apply_shift(1)
+    print("Message is {0}".format(message))
+    print("Encrypted message is {0}".format(encrypted_message))
