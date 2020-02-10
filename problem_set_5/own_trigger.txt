@@ -1,0 +1,9 @@
+t1,TITLE,Trump
+
+t2,TITLE,impeachment
+
+t3,AND,t1,t2
+
+t4,TITLE,coronavirus
+
+ADD,t3,t4

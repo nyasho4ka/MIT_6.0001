@@ -171,25 +171,83 @@ class DescriptionTrigger(PhraseTrigger):
 #        Input: Time has to be in EST and in the format of "%d %b %Y %H:%M:%S".
 #        Convert time from string to a datetime before saving it as an attribute.
 
+
+class TimeTrigger(Trigger):
+    datetime_format = '%d %b %Y %H:%M:%S'
+
+    def __init__(self, string_datetime):
+        self.date = datetime.strptime(string_datetime, self.datetime_format).replace(tzinfo=pytz.timezone('EST'))
+
+
 # Problem 6
 # TODO: BeforeTrigger and AfterTrigger
+class BeforeTrigger(TimeTrigger):
+    def evaluate(self, story):
+        pubdate = story.pubdate
+        if not story.pubdate.tzinfo:
+            pubdate = story.pubdate.replace(tzinfo=pytz.timezone('EST'))
+        return (self.date - pubdate).total_seconds() > 0
 
+
+class AfterTrigger(TimeTrigger):
+    def evaluate(self, story):
+        pubdate = story.pubdate
+        if not story.pubdate.tzinfo:
+            pubdate = story.pubdate.replace(tzinfo=pytz.timezone('EST'))
+        return (pubdate - self.date).total_seconds() > 0
 
 # COMPOSITE TRIGGERS
 
 # Problem 7
 # TODO: NotTrigger
 
+
+class NotTrigger(Trigger):
+    def __init__(self, trigger):
+        self.trigger = trigger
+
+    def evaluate(self, story):
+        return not self.trigger.evaluate(story)
+
 # Problem 8
 # TODO: AndTrigger
 
+
+class AndTrigger(Trigger):
+    def __init__(self, first_trigger, second_trigger):
+        self.first_trigger = first_trigger
+        self.second_trigger = second_trigger
+
+    def evaluate(self, story):
+        return self.first_trigger.evaluate(story) and self.second_trigger.evaluate(story)
 # Problem 9
 # TODO: OrTrigger
+
+
+class OrTrigger(Trigger):
+    def __init__(self, first_trigger, second_trigger):
+        self.first_trigger = first_trigger
+        self.second_trigger = second_trigger
+
+    def evaluate(self, story):
+        return self.first_trigger.evaluate(story) or self.second_trigger.evaluate(story)
+
+
+TRIGGER_TYPE_TO_CLASS = {
+    'TITLE': TitleTrigger,
+    'DESCRIPTION': DescriptionTrigger,
+    'AFTER': AfterTrigger,
+    'BEFORE': BeforeTrigger,
+    'NOT': NotTrigger,
+    'AND': AndTrigger,
+    'OR': OrTrigger,
+}
 
 
 #======================
 # Filtering
 #======================
+
 
 # Problem 10
 def filter_stories(stories, triggerlist):
@@ -201,7 +259,13 @@ def filter_stories(stories, triggerlist):
     # TODO: Problem 10
     # This is a placeholder
     # (we're just returning all the stories, with no filtering)
-    return stories
+    filtering_stories = []
+    for story in stories:
+        for trigger in triggerlist:
+            if trigger.evaluate(story):
+                filtering_stories.append(story)
+                break
+    return filtering_stories
 
 
 
@@ -226,10 +290,57 @@ def read_trigger_config(filename):
             lines.append(line)
 
     # TODO: Problem 11
-    # line is the list of lines that you need to parse and for which you need
+    # lines is the list of lines that you need to parse and for which you need
     # to build triggers
+    trigger_list = list()
+    trigger_dict = dict()
+    for trigger in lines:
+        if trigger.startswith('ADD'):
+            add_trigger_to_trigger_list(trigger, trigger_dict, trigger_list)
+        else:
+            # Parse line: trigger name, trigger type, trigger arguments
+            trigger_name, trigger_type, *trigger_args = parse_trigger_line(trigger)
+            # If trigger type is binary (AND or OR)
+            if is_trigger_binary(trigger_type):
+                # convert trigger arguments from string to trigger objects from trigger dict
+                trigger_args = convert_string_arguments_to_triggers(trigger_dict, trigger_args)
+            # create new trigger with trigger type and trigger arguments
+            new_trigger = create_new_trigger(trigger_type, *trigger_args)
+            # add new trigger to trigger dict
+            trigger_dict.update({trigger_name: new_trigger})
+        pass
 
-    print(lines) # for now, print it so you see what it contains!
+    print(lines)  # for now, print it so you see what it contains!
+    return trigger_list
+
+
+def add_trigger_to_trigger_list(trigger_line, trigger_dict, trigger_list):
+    # get trigger names from line
+    trigger_names = trigger_line.split(',')[1:]
+    # add triggers to trigger list from trigger dict by names
+    for trigger_name in trigger_names:
+        if trigger_name in trigger_dict:
+            trigger_list.append(trigger_dict.get(trigger_name, None))
+
+
+def parse_trigger_line(trigger_line):
+    return trigger_line.split(',')
+
+
+def is_trigger_binary(trigger_type):
+    return trigger_type == 'AND' or trigger_type == 'OR'
+
+
+def convert_string_arguments_to_triggers(trigger_dict, trigger_arguments):
+    trigger_list = []
+    for trigger in trigger_arguments:
+        if trigger in trigger_dict:
+            trigger_list.append(trigger_dict.get(trigger, None))
+    return trigger_list
+
+
+def create_new_trigger(trigger_type, *trigger_args):
+    return TRIGGER_TYPE_TO_CLASS[trigger_type](*trigger_args)
 
 
 
@@ -239,15 +350,15 @@ def main_thread(master):
     # A sample trigger list - you might need to change the phrases to correspond
     # to what is currently in the news
     try:
-        t1 = TitleTrigger("election")
-        t2 = DescriptionTrigger("Trump")
-        t3 = DescriptionTrigger("Clinton")
-        t4 = AndTrigger(t2, t3)
-        triggerlist = [t1, t4]
+        # t1 = TitleTrigger("election")
+        # t2 = DescriptionTrigger("Trump")
+        # t3 = DescriptionTrigger("Clinton")
+        # t4 = AndTrigger(t2, t3)
+        # triggerlist = [t1, t4]
 
         # Problem 11
         # TODO: After implementing read_trigger_config, uncomment this line 
-        # triggerlist = read_trigger_config('triggers.txt')
+        triggerlist = read_trigger_config('own_trigger.txt')
         
         # HELPER CODE - you don't need to understand this!
         # Draws the popup window that displays the filtered stories
@@ -298,33 +409,11 @@ def main_thread(master):
         print(e)
 
 
-# if __name__ == '__main__':
-#     root = Tk()
-#     root.title("Some RSS parser")
-#     t = threading.Thread(target=main_thread, args=(root,))
-#     t.start()
-#     root.mainloop()
-def test_all(user_inputs, expected_outputs):
-    actual_outputs = []
-    phrase = 'purple cow'
-    for user_input in user_inputs:
-        trigger = PhraseTrigger(phrase)
-        actual_outputs.append(trigger.is_phrase_in(user_input))
-
-    if actual_outputs == expected_outputs:
-        print("SUCCESS")
-    else:
-        print("FAILURE")
-
-    print("Expected outputs: {0}".format(expected_outputs))
-    print("Actual outputs: {0}".format(actual_outputs))
-
-
 if __name__ == '__main__':
-    user_inputs = [
-        'PURPLE COW', 'The purple cow is soft and cuddly.', 'The farmer owns a really PURPLE cow.',
-        'Purple!!! Cow!!!', 'purple@#$%cow', 'Did you see a purple\ncow?',
-        'Purple cows are cool!', 'The purple blob over there is a cow.', 'How now brown cow.',
-        'Cow!!! Purple!!!', 'purplecowpurplecowpurplecow']
-    expected_outputs = [True, True, True, True, True, True, False, False, False, False, False]
-    test_all(user_inputs, expected_outputs)
+    root = Tk()
+    root.title("Some RSS parser")
+    t = threading.Thread(target=main_thread, args=(root,))
+    t.start()
+    root.mainloop()
+# if __name__ == '__main__':
+#     trigger_list = read_trigger_config('triggers.txt')
